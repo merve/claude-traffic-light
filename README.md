@@ -65,13 +65,13 @@ Pick your platform below.
 
 ### 🍎 macOS
 
-1. Download **`Claude Traffic Light.dmg`** from the
+1. Download **`ClaudeTrafficLight.dmg`** from the
    [latest release](https://github.com/merve/claude-traffic-light/releases/latest).
 2. Open the DMG and drag **Claude Traffic Light** into **Applications**.
 3. Launch it. On first run it self-installs the Claude Code hook, sets up
    launch-at-login, and the traffic light appears in your menu bar.
 
-_(Optional)_ **`Claude Traffic Widget.dmg`** adds a draggable, pinnable floating
+_(Optional)_ **`ClaudeTrafficWidget.dmg`** adds a draggable, pinnable floating
 widget with a live session list — install it the same way. It's a read-only
 viewer, so it needs the menu-bar app installed at least once first (that's what
 sets up the hook). Runs fine alongside the menu-bar app, or standalone.
