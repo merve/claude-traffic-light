@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>ClaudeTrafficLight.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <!--
+    Test the SAME shared logic the tray app and the widget both compile — the routing a
+    click triggers (SessionRouter), status parsing/aggregation (StatusStore), the red-turn
+    notification gate (RedTransitionTracker) and localization. We link the source files in
+    (no WinForms needed), mirroring how the widget reuses the tray app's code.
+  -->
+  <ItemGroup>
+    <Compile Include="..\ClaudeTrafficLight\Core\StatusStore.cs" Link="Core\StatusStore.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Core\SessionRouter.cs" Link="Core\SessionRouter.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Core\RedTransitionTracker.cs" Link="Core\RedTransitionTracker.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Core\Localization.cs" Link="Core\Localization.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Core\Paths.cs" Link="Core\Paths.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Platform\ProcessInfo.cs" Link="Platform\ProcessInfo.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Platform\ProcessTree.cs" Link="Platform\ProcessTree.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Platform\NativeMethods.cs" Link="Platform\NativeMethods.cs" />
+  </ItemGroup>
+
+</Project>

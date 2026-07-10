@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <AssemblyName>ClaudeTrafficWidget</AssemblyName>
+    <RootNamespace>ClaudeTrafficWidget</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+
+    <Version>1.0.0</Version>
+    <Product>Claude Traffic Widget</Product>
+    <Company>Claude Traffic Light</Company>
+  </PropertyGroup>
+
+  <!--
+    Reuse the tray app's portable code WITHOUT touching that project: link the shared
+    source files in (they compile into this assembly under their original namespaces).
+    The tray project is never modified or referenced as a binary.
+  -->
+  <ItemGroup>
+    <Compile Include="..\ClaudeTrafficLight\Core\*.cs" Link="Shared\Core\%(Filename)%(Extension)" />
+    <Compile Include="..\ClaudeTrafficLight\Platform\*.cs" Link="Shared\Platform\%(Filename)%(Extension)" />
+    <Compile Include="..\ClaudeTrafficLight\UI\MenuTheme.cs" Link="Shared\UI\MenuTheme.cs" />
+    <Compile Include="..\ClaudeTrafficLight\UI\SessionRowControl.cs" Link="Shared\UI\SessionRowControl.cs" />
+    <Compile Include="..\ClaudeTrafficLight\UI\RelativeTime.cs" Link="Shared\UI\RelativeTime.cs" />
+  </ItemGroup>
+
+</Project>

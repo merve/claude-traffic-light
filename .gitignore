@@ -1,0 +1,52 @@
+# ==========================================================================
+#  Claude Traffic Light — repository ignore rules (macOS + Windows)
+#  Distributable binaries (.dmg / .exe) are published via GitHub Releases,
+#  NOT committed to the repo. Everything below is build output or local config.
+# ==========================================================================
+
+# ---- OS cruft ----
+.DS_Store
+**/.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- macOS / Swift build output ----
+.build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+*.swiftpm
+
+# Assembled app bundles (rebuilt by build-app.sh / install.sh)
+*.app/
+
+# ---- .NET / Windows build output ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+publish/
+.vs/
+
+# ---- Distributable binaries (ship via GitHub Releases) ----
+*.dmg
+*.exe
+*.pdb
+*.msi
+*.zip
+
+# ---- Editor / IDE / local Claude Code session config ----
+.claude/
+.idea/
+*.swp
+*~
+
+# ---- settings.json backups created by install / uninstall / first launch ----
+*.bak.claudestatus.*
+*.bak.claudelight
+settings.json.bak
+
+# ---- Secrets / environment ----
+.env
+*.env
+*.local

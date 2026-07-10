@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>ClaudeTrafficWidget.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <!--
+    Test the widget's pure resize geometry directly (no WinForms): link the source file in,
+    under its original namespace. WidgetForm.WndProc delegates to WidgetResize.Apply.
+  -->
+  <ItemGroup>
+    <Compile Include="..\ClaudeTrafficWidget\WidgetResize.cs" Link="WidgetResize.cs" />
+  </ItemGroup>
+
+</Project>

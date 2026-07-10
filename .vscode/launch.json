@@ -1,0 +1,44 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:claude-traffic-light}/macos",
+      "name": "Debug ClaudeWidget (macos)",
+      "target": "ClaudeWidget",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug ClaudeWidget (macos)"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:claude-traffic-light}/macos",
+      "name": "Release ClaudeWidget (macos)",
+      "target": "ClaudeWidget",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release ClaudeWidget (macos)"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:claude-traffic-light}/macos",
+      "name": "Debug ClaudeStatus (macos)",
+      "target": "ClaudeStatus",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug ClaudeStatus (macos)"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:claude-traffic-light}/macos",
+      "name": "Release ClaudeStatus (macos)",
+      "target": "ClaudeStatus",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release ClaudeStatus (macos)"
+    }
+  ]
+}
