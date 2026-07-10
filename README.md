@@ -65,7 +65,7 @@ Pick your platform below.
 
 ### 🍎 macOS
 
-1. Download **`ClaudeTrafficLight.dmg`** from the
+1. Download **`ClaudeTrafficLightMenuBar.dmg`** from the
    [latest release](https://github.com/merve/claude-traffic-light/releases/latest).
 2. Open the DMG and drag **Claude Traffic Light** into **Applications**.
 3. Launch it. On first run it self-installs the Claude Code hook, sets up
@@ -90,7 +90,7 @@ Two independent builds — grab either or both from the
 [latest release](https://github.com/merve/claude-traffic-light/releases/latest).
 Both are **self-contained** (no .NET install required).
 
-- **`ClaudeTrafficLight.exe`** — the **system-tray** traffic light (recommended).
+- **`ClaudeTrafficLightTrayApp.exe`** — the **system-tray** traffic light (recommended).
 - **`ClaudeTrafficWidget.exe`** — an optional **always-on-top desktop widget** you
   can drag anywhere on screen.
 
@@ -99,7 +99,7 @@ Install:
 1. Put the `.exe`(s) in a **permanent** folder, e.g.
    `%LOCALAPPDATA%\ClaudeTrafficLight\` (don't leave them on the Desktop — moving
    them later breaks autostart).
-2. Double-click **`ClaudeTrafficLight.exe`**. On first run it self-installs the
+2. Double-click **`ClaudeTrafficLightTrayApp.exe`**. On first run it self-installs the
    Claude Code hook (backs up `settings.json` first) and registers autostart. The
    light shows up near the clock (bottom-right). If hidden, click the **^** arrow.
 3. _(Optional)_ Double-click **`ClaudeTrafficWidget.exe`** for the desktop widget.
