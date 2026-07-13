@@ -70,6 +70,16 @@ they are attached to [GitHub Releases](https://github.com/merve/claude-traffic-l
   `windows\ClaudeTrafficWidget`, run
   `dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true`
 
+### Automated releases
+
+Merging a PR into `main` runs [`.github/workflows/release.yml`](.github/workflows/release.yml),
+which only publishes a new GitHub Release if the root `VERSION` file was bumped in that PR
+(no matching git tag yet). When it does, it rebuilds all four distributables (both macOS DMGs
+and both Windows exes) fresh and attaches them together to a single `vX.Y.Z` release/tag, so a
+release is never a mix of old and new binaries — even if only one platform actually changed.
+Each app's own internal version (Info.plist / `.csproj`) is independent and only needs bumping
+for the platform you actually changed; bump `VERSION` whenever a PR should ship a release.
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the

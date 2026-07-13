@@ -1,0 +1,135 @@
+name: Release
+
+# Fires after a PR is merged into main (a merge is a push to main). Whether it
+# actually publishes anything is gated by check-version below: only a commit
+# that bumps the root VERSION file (to a value with no matching git tag yet)
+# produces a release. Every other merge (docs, refactors, CI tweaks) is a no-op.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: check
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists — skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No tag for v$VERSION yet — will release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-macos:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build DMGs
+        run: |
+          cd macos
+          ./build-dmg.sh
+          ./build-widget-dmg.sh
+
+      - name: Rename to release asset names
+        run: |
+          cd macos
+          mv "Claude Traffic Light.dmg" ClaudeTrafficLightMenuBar.dmg
+          mv "Claude Traffic Widget.dmg" ClaudeTrafficWidget.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmgs
+          path: |
+            macos/ClaudeTrafficLightMenuBar.dmg
+            macos/ClaudeTrafficWidget.dmg
+
+  build-windows:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish tray app
+        run: >
+          dotnet publish windows/ClaudeTrafficLight -c Release -r win-x64
+          --self-contained true -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true -o publish/tray
+
+      - name: Publish widget
+        run: >
+          dotnet publish windows/ClaudeTrafficWidget -c Release -r win-x64
+          --self-contained true -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true -o publish/widget
+
+      - name: Rename to release asset names
+        run: |
+          copy publish\tray\ClaudeTrafficLight.exe ClaudeTrafficLightTrayApp.exe
+          copy publish\widget\ClaudeTrafficWidget.exe ClaudeTrafficWidget.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exes
+          path: |
+            ClaudeTrafficLightTrayApp.exe
+            ClaudeTrafficWidget.exe
+
+  release:
+    needs: [check-version, build-macos, build-windows]
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Determine what changed
+        id: changes
+        run: |
+          PREV_TAG="$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)"
+          {
+            echo "notes<<NOTES_EOF"
+            echo "Automated release for v${{ needs.check-version.outputs.version }}."
+            echo
+            if [ -n "$PREV_TAG" ]; then
+              echo "Changed paths since $PREV_TAG:"
+              git diff --name-only "$PREV_TAG"..HEAD -- macos windows | sed 's/^/- /'
+            else
+              echo "First automated release."
+            fi
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ needs.check-version.outputs.version }}" \
+            dist/ClaudeTrafficLightMenuBar.dmg \
+            dist/ClaudeTrafficWidget.dmg \
+            dist/ClaudeTrafficLightTrayApp.exe \
+            dist/ClaudeTrafficWidget.exe \
+            --title "v${{ needs.check-version.outputs.version }}" \
+            --notes "${{ steps.changes.outputs.notes }}"
