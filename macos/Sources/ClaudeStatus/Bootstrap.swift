@@ -126,10 +126,10 @@ enum Bootstrap {
         do {
             try FileManager.default.createDirectory(at: agents, withIntermediateDirectories: true)
             try contents.write(to: plist, atomically: true, encoding: .utf8)
-            let load = Process()
-            load.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-            load.arguments = ["load", plist.path]
-            try? load.run()
+            // Do NOT `launchctl load` here: with RunAtLoad=true that immediately spawns
+            // a second instance of this already-running app (two menu bar icons on first
+            // launch). Writing the file into ~/Library/LaunchAgents is enough — launchd
+            // picks it up on its own at the next login.
         } catch {
             NSLog("Bootstrap: failed to install LaunchAgent: \(error)")
         }

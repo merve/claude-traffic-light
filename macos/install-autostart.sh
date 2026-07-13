@@ -46,9 +46,12 @@ PLISTEOF
 
 echo "==> LaunchAgent written: $PLIST"
 
-# If already loaded, unload then load (idempotent).
+# Unload any previously-loaded copy (idempotent), but do NOT load the new one here:
+# with RunAtLoad=true, `launchctl load` immediately spawns a second instance of the
+# app alongside whatever's already running (e.g. the one install.sh is about to
+# open next), producing two menu bar icons. launchd picks the file up on its own at
+# the next login, which is all autostart needs.
 launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load "$PLIST"
 
 echo "==> Launch at login enabled. $APP_NAME will run on every login."
 echo "    To remove:  launchctl unload \"$PLIST\" && rm \"$PLIST\""
