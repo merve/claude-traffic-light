@@ -15,6 +15,7 @@ public struct L10n {
     public let quit: String        // menu: quit
     public let notifyTitle: String // notification title: on turning red
     public let notifyMenu: String  // menu: notifications (toggle)
+    public let desktopAppMissing: String // feedback: claude:// has no handler (desktop app not installed)
     public let activeSessions: String // menu header title (when there are sessions)
     public let hint: String        // menu footer hint (how to open a session)
     public let localeID: String    // for the relative-time formatter (e.g. "58s ago")
@@ -44,6 +45,7 @@ public struct L10n {
         waitingWord: "waiting", workingWord: "working", doneWord: "done",
         refresh: "Refresh", quit: "Quit",
         notifyTitle: "Claude is waiting for you", notifyMenu: "Notifications",
+        desktopAppMissing: "Claude desktop app is not installed — cannot open this session",
         activeSessions: "Active sessions", hint: "Click a session to jump to it",
         localeID: "en")
 
@@ -55,6 +57,7 @@ public struct L10n {
             waitingWord: "bekliyor", workingWord: "çalışıyor", doneWord: "bitti",
             refresh: "Yenile", quit: "Çıkış",
             notifyTitle: "Claude seni bekliyor", notifyMenu: "Bildirimler",
+            desktopAppMissing: "Claude masaüstü uygulaması yüklü değil — bu oturum açılamıyor",
             activeSessions: "Aktif oturumlar", hint: "Gitmek için bir oturuma tıkla",
             localeID: "tr"),
         "es": L10n(
@@ -63,6 +66,7 @@ public struct L10n {
             waitingWord: "esperando", workingWord: "trabajando", doneWord: "terminado",
             refresh: "Actualizar", quit: "Salir",
             notifyTitle: "Claude te está esperando", notifyMenu: "Notificaciones",
+            desktopAppMissing: "La app de escritorio de Claude no está instalada — no se puede abrir esta sesión",
             activeSessions: "Sesiones activas", hint: "Haz clic en una sesión para abrirla",
             localeID: "es"),
         "de": L10n(
@@ -71,6 +75,7 @@ public struct L10n {
             waitingWord: "wartend", workingWord: "arbeitend", doneWord: "fertig",
             refresh: "Aktualisieren", quit: "Beenden",
             notifyTitle: "Claude wartet auf dich", notifyMenu: "Benachrichtigungen",
+            desktopAppMissing: "Die Claude-Desktop-App ist nicht installiert — Sitzung kann nicht geöffnet werden",
             activeSessions: "Aktive Sitzungen", hint: "Sitzung anklicken, um zu ihr zu springen",
             localeID: "de"),
         "fr": L10n(
@@ -79,6 +84,7 @@ public struct L10n {
             waitingWord: "en attente", workingWord: "en cours", doneWord: "terminé",
             refresh: "Actualiser", quit: "Quitter",
             notifyTitle: "Claude vous attend", notifyMenu: "Notifications",
+            desktopAppMissing: "L'application de bureau Claude n'est pas installée — impossible d'ouvrir cette session",
             activeSessions: "Sessions actives", hint: "Cliquez sur une session pour y accéder",
             localeID: "fr"),
         "it": L10n(
@@ -87,6 +93,7 @@ public struct L10n {
             waitingWord: "in attesa", workingWord: "in corso", doneWord: "completato",
             refresh: "Aggiorna", quit: "Esci",
             notifyTitle: "Claude ti sta aspettando", notifyMenu: "Notifiche",
+            desktopAppMissing: "L'app desktop di Claude non è installata — impossibile aprire questa sessione",
             activeSessions: "Sessioni attive", hint: "Clicca una sessione per aprirla",
             localeID: "it"),
         "pt": L10n(
@@ -95,6 +102,7 @@ public struct L10n {
             waitingWord: "aguardando", workingWord: "trabalhando", doneWord: "concluído",
             refresh: "Atualizar", quit: "Sair",
             notifyTitle: "Claude está esperando por você", notifyMenu: "Notificações",
+            desktopAppMissing: "O app desktop do Claude não está instalado — não é possível abrir esta sessão",
             activeSessions: "Sessões ativas", hint: "Clique em uma sessão para abri-la",
             localeID: "pt"),
         "ru": L10n(
@@ -103,6 +111,7 @@ public struct L10n {
             waitingWord: "ждут", workingWord: "работают", doneWord: "готово",
             refresh: "Обновить", quit: "Выход",
             notifyTitle: "Claude ждёт вас", notifyMenu: "Уведомления",
+            desktopAppMissing: "Приложение Claude для компьютера не установлено — не удаётся открыть эту сессию",
             activeSessions: "Активные сессии", hint: "Нажмите на сессию, чтобы открыть",
             localeID: "ru"),
         "ja": L10n(
@@ -111,6 +120,7 @@ public struct L10n {
             waitingWord: "待機中", workingWord: "作業中", doneWord: "完了",
             refresh: "更新", quit: "終了",
             notifyTitle: "Claude が待っています", notifyMenu: "通知",
+            desktopAppMissing: "Claude デスクトップアプリが未インストールのため、このセッションを開けません",
             activeSessions: "アクティブなセッション", hint: "セッションをクリックして開く",
             localeID: "ja"),
         "zh": L10n(
@@ -119,6 +129,7 @@ public struct L10n {
             waitingWord: "等待中", workingWord: "工作中", doneWord: "完成",
             refresh: "刷新", quit: "退出",
             notifyTitle: "Claude 正在等你", notifyMenu: "通知",
+            desktopAppMissing: "未安装 Claude 桌面应用 — 无法打开此会话",
             activeSessions: "活动会话", hint: "点击会话以跳转",
             localeID: "zh"),
         "ko": L10n(
@@ -127,6 +138,7 @@ public struct L10n {
             waitingWord: "대기 중", workingWord: "작업 중", doneWord: "완료",
             refresh: "새로고침", quit: "종료",
             notifyTitle: "Claude가 기다리고 있습니다", notifyMenu: "알림",
+            desktopAppMissing: "Claude 데스크톱 앱이 설치되어 있지 않아 이 세션을 열 수 없습니다",
             activeSessions: "활성 세션", hint: "세션을 클릭하여 이동",
             localeID: "ko"),
     ]

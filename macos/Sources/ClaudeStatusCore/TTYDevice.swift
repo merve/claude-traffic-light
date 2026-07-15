@@ -13,4 +13,25 @@ public enum TTYDevice {
         guard !trimmed.isEmpty, trimmed != "??" else { return nil }
         return trimmed.hasPrefix("/dev/") ? trimmed : "/dev/" + trimmed
     }
+
+    /// Runs `ps -o tty= -p <pid>` and parses the result. Foundation-only (no AppKit), so
+    /// it's shared between the tray app and the widget (they were previously identical
+    /// private copies in `AppDelegate` and `WidgetController`).
+    public static func device(forPid pid: Int32) -> String? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/ps")
+        task.arguments = ["-o", "tty=", "-p", "\(pid)"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let out = String(data: data, encoding: .utf8) else { return nil }
+            return parse(psOutput: out)
+        } catch {
+            return nil
+        }
+    }
 }

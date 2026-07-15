@@ -17,15 +17,24 @@ public static class Bootstrap
     private const string RunValueName = "ClaudeTrafficLight";
     public const string HookMarker = "ClaudeTrafficLight"; // exe basename → identifies our commands
 
-    /// <summary>(Claude Code event, matcher, hook state) → the settings.json groups we own.</summary>
-    private static readonly (string Event, string? Matcher, string State)[] Events =
+    /// <summary>
+    /// (Claude Code event, matcher, hook state) → the settings.json groups we own. Must
+    /// stay event-for-event in sync with the macOS snippet (macos/hooks/settings-snippet.json)
+    /// — CONTRIBUTING.md "keep both platforms in sync"; enforced by BootstrapEventsTests.
+    /// </summary>
+    internal static readonly (string Event, string? Matcher, string State)[] Events =
     {
         ("UserPromptSubmit", null, "yellow"),
         ("PreToolUse",       "*",  "yellow"),
         ("PermissionRequest", null, "red"),
         ("PostToolUse",      "*",  "yellow"),
+        ("PostToolUseFailure", "*", "yellow"),
+        ("PermissionDenied", null, "yellow"),
         ("Notification",     null, "red"),
+        ("SubagentStart",    null, "subagent-start"),
+        ("SubagentStop",     null, "subagent-stop"),
         ("Stop",             null, "green"),
+        ("StopFailure",      null, "green"),
         ("SessionEnd",       null, "end"),
     };
 

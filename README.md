@@ -124,13 +124,45 @@ Two pieces, on both platforms:
 | Claude Code event                                 | Meaning           |   Color   |
 | ------------------------------------------------- | ----------------- | :-------: |
 | `UserPromptSubmit`, `PreToolUse`, `PostToolUse`   | Working           |    🟡     |
+| `PostToolUseFailure`, `PermissionDenied`          | Working (tool failed / denied → Claude continues) | 🟡 |
 | `PreToolUse` (`AskUserQuestion` / `ExitPlanMode`) | Waiting on you    |    🔴     |
-| `PermissionRequest`, `Notification`               | Waiting on you    |    🔴     |
-| `Stop`                                            | Response finished |    🟢     |
+| `PermissionRequest`, `Notification`*              | Waiting on you    |    🔴     |
+| `SubagentStart`                                   | Working (background agent running) | 🟡 |
+| `SubagentStop`                                    | Unchanged — only clears the agent from the active set | — |
+| `Stop`, `StopFailure`                             | Response finished |    🟢     |
+| `Stop` (a background subagent is still running)** | Working           |    🟡     |
+| `Stop` (reply ends with a blocking question)      | Waiting on you    |    🔴     |
+| `Stop` (courtesy closer: "anything else?")        | Response finished |    🟢     |
 | `SessionEnd`                                      | Session ended     | (removed) |
+
+\* `Notification` is filtered by an allowlist that's deliberately inverted: only
+the types that genuinely mean "waiting on you" (`permission_prompt`,
+`elicitation_dialog`, `agent_needs_input`, mid-turn idle) go red, elicitation
+completion goes back to yellow, and **everything else — including an unknown or
+missing type — repaints nothing at all.** That way a future notification type
+(or an older Claude Code version where the field never arrives) can never light
+a false red mid-turn; a real permission wait already goes red via the separate
+`PermissionRequest` event either way.
+
+\** A background subagent finishing its own turn used to paint the shared
+session green (its `Stop`) even while the user's actual request was still
+running, then flip back yellow on the next tool call — visible flicker that
+told the user "done" while work continued. The light now tracks active
+subagent ids and stays yellow through the real `Stop` while any are still
+running (a detected question always outranks this and still goes red).
 
 When a chat closes, the app notices its process is gone, drops the row, and deletes
 the stale status file — so the list stays clean.
+
+**Red-trust gate.** Red means "a question is visible in a chat you are actually in".
+When an IDE window reloads, its extension silently resumes old sessions in the
+background; the resumed process immediately re-fires the pending-question
+`Notification`, which would light a red you can never find or answer. The hook
+grants trust only to an event that actually proves you're present: you just typed
+(`UserPromptSubmit`), the session has a visible terminal (a controlling tty /
+console) or is the always-visible Claude desktop app, or the previous write from
+the same process was already trusted. Anything else keeps whatever trust it had
+before (untrusted by default); an untrusted red is recorded as green.
 
 ## 🌍 Languages
 

@@ -17,23 +17,72 @@ public enum SessionRouter {
     ///   - appPath: hosting .app path captured by the hook (empty if unknown)
     ///   - cwd: project folder
     ///   - sessionID: session identifier (for the desktop deep link)
-    public static func action(platform: String, appPath: String,
-                              cwd: String, sessionID: String) -> OpenAction {
+    ///   - home: home directory, for the `~/Applications` fallback candidates (F8).
+    ///     Defaults to the real home dir; tests inject a fixed value.
+    ///   - isValidBundle: F10 — validates a candidate `.app` path is an actual bundle
+    ///     (not just a folder that happens to end in ".app"); production callers pass
+    ///     a real filesystem check, tests default to "always valid" for determinism.
+    public static func action(platform: String, appPath: String, cwd: String, sessionID: String,
+                              home: String = NSHomeDirectory(),
+                              isValidBundle: (String) -> Bool = { _ in true }) -> OpenAction {
         switch platform {
         case "vscode":
-            return .openInEditor(appPath: "/Applications/Visual Studio Code.app", folder: cwd)
+            // Prefer the app the session actually runs in (captured by the hook —
+            // handles Insiders builds and installs outside /Applications); the
+            // editorCandidates fallback is only used when app_path wasn't captured.
+            return .openInEditor(appPath: mainAppBundle(from: appPath, isValid: isValidBundle)
+                                    ?? editorCandidates(home: home).first { $0.contains("Visual Studio Code") }!,
+                                 folder: cwd)
         case "cursor":
-            return .openInEditor(appPath: "/Applications/Cursor.app", folder: cwd)
+            return .openInEditor(appPath: mainAppBundle(from: appPath, isValid: isValidBundle)
+                                    ?? editorCandidates(home: home).first { $0.contains("Cursor") }!,
+                                 folder: cwd)
         case "desktop":
             return .desktopDeepLink(sessionID: sessionID)
         case "terminal":
             // The session was started from a terminal → bring that terminal to
             // front (NOT the Claude desktop app). app_path tells us which one.
-            if !appPath.isEmpty { return .activateApp(path: appPath) }
+            if let app = mainAppBundle(from: appPath, isValid: isValidBundle) { return .activateApp(path: app) }
             return .desktopDeepLink(sessionID: sessionID) // last resort when app_path is missing
         default: // unknown — activate the hosting GUI app if we know it, else deep link
-            if !appPath.isEmpty { return .activateApp(path: appPath) }
+            if let app = mainAppBundle(from: appPath, isValid: isValidBundle) { return .activateApp(path: app) }
             return .desktopDeepLink(sessionID: sessionID)
         }
+    }
+
+    /// F8 — single source of truth for "generic folder opener" fallback order (VS Code
+    /// before Cursor; /Applications before ~/Applications for each). Used by the vscode/
+    /// cursor fallback above AND by both `openProjectFolder` copies (AppDelegate,
+    /// WidgetController) so a normal click and an Option-click never disagree about which
+    /// editor gets opened. `home` is a parameter (not read internally) so this stays a pure,
+    /// unit-testable function; callers do the actual `FileManager` existence check.
+    public static func editorCandidates(home: String) -> [String] {
+        [
+            "/Applications/Visual Studio Code.app",
+            home + "/Applications/Visual Studio Code.app",
+            "/Applications/Cursor.app",
+            home + "/Applications/Cursor.app",
+        ]
+    }
+
+    /// Outermost VALID `.app` bundle in a path. The hook records the nearest `.app`-suffixed
+    /// path segment in the process ancestry, which for IDE-hosted sessions is an inner helper
+    /// bundle ("…/Visual Studio Code.app/Contents/Frameworks/Code Helper.app") — the app to
+    /// activate is the outer one. F10: a `.app`-suffixed segment isn't necessarily a real
+    /// bundle (e.g. a folder literally named "tools.app" containing an app) — `isValid` lets
+    /// the caller confirm it (e.g. an Info.plist check) before accepting it; a rejected
+    /// candidate is skipped in favor of the NEXT `.app` segment, not treated as a dead end.
+    /// If no candidate validates, falls back to the raw, unmodified `path` (old behavior)
+    /// rather than nil — only a path with no ".app" segment at all returns nil.
+    public static func mainAppBundle(from path: String, isValid: (String) -> Bool = { _ in true }) -> String? {
+        guard !path.isEmpty else { return nil }
+        var bundle = ""
+        for component in path.split(separator: "/", omittingEmptySubsequences: true) {
+            bundle += "/" + component
+            if component.hasSuffix(".app"), isValid(bundle) {
+                return bundle
+            }
+        }
+        return path.contains(".app") ? path : nil
     }
 }

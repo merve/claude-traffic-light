@@ -85,12 +85,11 @@ public sealed class StatusStore
             JsonElement obj;
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(path));
-                obj = doc.RootElement.Clone();
+                obj = ReadJsonWithRetry(path);
             }
             catch
             {
-                continue; // half-written / invalid JSON — skip
+                continue; // unreadable / invalid JSON — skip (row reappears next poll)
             }
 
             if (obj.ValueKind != JsonValueKind.Object) continue;
@@ -187,8 +186,33 @@ public sealed class StatusStore
         return i >= 0 ? p[(i + 1)..] : p;
     }
 
+    /// <summary>
+    /// Reads and parses a status file, retrying once after a short beat on IO errors:
+    /// the hook's ReplaceFile can transiently lock the file, and skipping it would make
+    /// the session row blink out of the list for a whole poll cycle.
+    /// </summary>
+    private static JsonElement ReadJsonWithRetry(string path)
+    {
+        for (int i = 0; ; i++)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                return doc.RootElement.Clone();
+            }
+            catch (IOException) when (i < 1)
+            {
+                Thread.Sleep(15);
+            }
+        }
+    }
+
+    /// <summary>Deletes a dead session's status file together with its hook-side
+    /// <c>.lock</c> companion (the hook serializes concurrent writers through it;
+    /// when the session dies without a SessionEnd, only we ever clean that up).</summary>
     private static void TryDelete(string path)
     {
         try { File.Delete(path); } catch { /* ignore */ }
+        try { File.Delete(path + ".lock"); } catch { /* ignore */ }
     }
 }
