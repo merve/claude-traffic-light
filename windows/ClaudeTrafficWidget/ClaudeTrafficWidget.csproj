@@ -14,7 +14,7 @@
     <ApplicationIcon>AppIcon.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
 
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>Claude Traffic Widget</Product>
     <Company>Claude Traffic Light</Company>
   </PropertyGroup>
