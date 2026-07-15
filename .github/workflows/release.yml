@@ -105,26 +105,13 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Determine what changed
-        id: changes
-        run: |
-          PREV_TAG="$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)"
-          {
-            echo "notes<<NOTES_EOF"
-            echo "Automated release for v${{ needs.check-version.outputs.version }}."
-            echo
-            if [ -n "$PREV_TAG" ]; then
-              echo "Changed paths since $PREV_TAG:"
-              git diff --name-only "$PREV_TAG"..HEAD -- macos windows | sed 's/^/- /'
-            else
-              echo "First automated release."
-            fi
-            echo "NOTES_EOF"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # --generate-notes builds the body from the pull requests merged since the
+        # previous release (GitHub picks the previous tag automatically) — a real
+        # changelog, unlike the changed-file listing this used to emit. Keep PR
+        # titles user-readable: they become the release notes verbatim.
         run: |
           gh release create "v${{ needs.check-version.outputs.version }}" \
             dist/ClaudeTrafficLightMenuBar.dmg \
@@ -132,4 +119,4 @@ jobs:
             dist/ClaudeTrafficLightTrayApp.exe \
             dist/ClaudeTrafficWidget.exe \
             --title "v${{ needs.check-version.outputs.version }}" \
-            --notes "${{ steps.changes.outputs.notes }}"
+            --generate-notes
