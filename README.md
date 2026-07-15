@@ -21,7 +21,10 @@ row, and click a row to jump straight to that chat (VS Code / Cursor / terminal 
 Claude desktop). When a session turns red, you get a native notification.
 
 **No network, no tokens, no telemetry** — it only reads local
-`~/.claude/status/*.json` files that Claude Code hooks write. Fully offline. The
+`~/.claude/status/*.json` files that Claude Code hooks write. Fully offline,
+with one explicit exception: the **Check for Updates…** menu item, which — only
+when you click it — asks the GitHub Releases API for the latest version and
+opens the release page if there is a newer one. Nothing runs automatically. The
 macOS and Windows apps share the exact same status contract, so they behave
 identically and can even run side by side.
 

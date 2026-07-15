@@ -24,6 +24,7 @@ public sealed class MenuFlyout : Form
     public event Action<SessionStatus>? RouteRequested;
     public event Action<SessionStatus>? EndRequested;
     public event Action? RefreshRequested;
+    public event Action? UpdateCheckRequested;
     public event Action? QuitRequested;
 
     public string Signature { get; }
@@ -82,6 +83,11 @@ public sealed class MenuFlyout : Form
         refresh.Clicked += () => RefreshRequested?.Invoke();
         Controls.Add(refresh);
         y += refresh.Height;
+
+        var updates = new ActionRowControl(t, l.CheckUpdates, CW) { Location = new Point(0, y) };
+        updates.Clicked += () => UpdateCheckRequested?.Invoke();
+        Controls.Add(updates);
+        y += updates.Height;
 
         var quit = new ActionRowControl(t, l.Quit, CW, shortcut: "Q") { Location = new Point(0, y) };
         quit.Clicked += () => QuitRequested?.Invoke();

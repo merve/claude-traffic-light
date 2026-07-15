@@ -29,7 +29,10 @@ Simgeye tıklayınca açılan menüde her oturum listelenir; bir oturuma tıklay
 çalıştığı yere (VS Code / Cursor / terminal / Claude masaüstü) atlar. Kırmızıya yeni
 geçen oturumlar için bildirim gönderir.
 
-**Ağ yok, token yok:** sadece yerel dosya okur. Tamamen çevrimdışı.
+**Ağ yok, token yok:** sadece yerel dosya okur. Tamamen çevrimdışı — tek istisna,
+KULLANICI TIKLADIĞINDA çalışan "Check for Updates…" menü satırı (GitHub Releases
+API'den son sürümü sorar, yeniyse release sayfasını açar; kendiliğinden asla ağ
+çağrısı yapılmaz — `Core/UpdateCheck.cs` / macOS `UpdateCheck.swift`).
 
 ---
 
@@ -428,7 +431,11 @@ Mac menüsü (aşağıdan yukarı yeniden kurulur, açılmadan hemen önce en ta
 5. **Ayraç.**
 6. **Notifications** (aç/kapa, işaretli/işaretsiz) — `l10n.notifyMenu`.
 7. **Refresh** — `l10n.refresh` (kısayol `r`).
-8. **Quit** — `l10n.quit` (kısayol `q`).
+8. **Check for Updates…** — `l10n.checkUpdates`: tıklanınca (yalnız o zaman)
+   GitHub Releases API'den son sürüm alınır; `UpdateCheck.isNewer` mevcut sürümle
+   karşılaştırır. Yeniyse release sayfası tarayıcıda açılır; değilse kısa bir
+   "güncel" geri bildirimi (Mac: NSAlert, Windows: balloon tip); hata → "denetlenemedi".
+9. **Quit** — `l10n.quit` (kısayol `q`).
 
 ### 8.1 Özet sayaç (header)
 `waiting`/`working`/`done` sayıları. Yalnızca **bekleyen** vurgulanır (kırmızı + semibold).

@@ -253,6 +253,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         refreshItem.target = self
         menu.addItem(refreshItem)
 
+        let updatesItem = NSMenuItem(title: l10n.checkUpdates, action: #selector(checkForUpdates), keyEquivalent: "")
+        updatesItem.target = self
+        menu.addItem(updatesItem)
+
         let quit = NSMenuItem(title: l10n.quit, action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
@@ -459,6 +463,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc private func refreshNow() {
         refresh()
+    }
+
+    // MARK: - Update check
+
+    /// Manual, user-initiated only: this is the app's ONLY network call, fired
+    /// exclusively from the "Check for Updates…" menu item (the README's offline
+    /// promise covers automatic behavior — the app never phones home on its own).
+    /// Newer release → open its page in the browser; otherwise a short alert.
+    @objc private func checkForUpdates() {
+        let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        var req = URLRequest(url: UpdateCheck.latestReleaseAPI)
+        req.setValue("claude-traffic-light", forHTTPHeaderField: "User-Agent")
+        req.timeoutInterval = 10
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                guard let data, let latest = UpdateCheck.parseLatestRelease(json: data) else {
+                    self.showUpdateAlert(self.l10n.updateCheckFailed)
+                    return
+                }
+                if UpdateCheck.isNewer(latest: latest.tag, current: current) {
+                    NSWorkspace.shared.open(latest.url)
+                } else {
+                    self.showUpdateAlert("\(self.l10n.upToDate) (\(current.isEmpty ? "dev" : current))")
+                }
+            }
+        }.resume()
+    }
+
+    /// LSUIElement apps have no key window; activate first so the alert is visible.
+    private func showUpdateAlert(_ text: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = text
+        alert.runModal()
     }
 
     @objc private func quit() {

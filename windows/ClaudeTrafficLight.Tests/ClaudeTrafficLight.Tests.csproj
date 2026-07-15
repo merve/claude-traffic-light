@@ -27,6 +27,7 @@
     <Compile Include="..\ClaudeTrafficLight\Core\RedTransitionTracker.cs" Link="Core\RedTransitionTracker.cs" />
     <Compile Include="..\ClaudeTrafficLight\Core\Localization.cs" Link="Core\Localization.cs" />
     <Compile Include="..\ClaudeTrafficLight\Core\Paths.cs" Link="Core\Paths.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Core\UpdateCheck.cs" Link="Core\UpdateCheck.cs" />
     <Compile Include="..\ClaudeTrafficLight\Platform\ProcessInfo.cs" Link="Platform\ProcessInfo.cs" />
     <Compile Include="..\ClaudeTrafficLight\Platform\ProcessTree.cs" Link="Platform\ProcessTree.cs" />
     <Compile Include="..\ClaudeTrafficLight\Platform\NativeMethods.cs" Link="Platform\NativeMethods.cs" />
