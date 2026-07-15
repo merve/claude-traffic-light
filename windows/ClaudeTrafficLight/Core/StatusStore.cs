@@ -187,8 +187,12 @@ public sealed class StatusStore
         return i >= 0 ? p[(i + 1)..] : p;
     }
 
+    /// <summary>Deletes a dead session's status file together with its hook-side
+    /// <c>.lock</c> companion (the hook serializes concurrent writers through it;
+    /// when the session dies without a SessionEnd, only we ever clean that up).</summary>
     private static void TryDelete(string path)
     {
         try { File.Delete(path); } catch { /* ignore */ }
+        try { File.Delete(path + ".lock"); } catch { /* ignore */ }
     }
 }

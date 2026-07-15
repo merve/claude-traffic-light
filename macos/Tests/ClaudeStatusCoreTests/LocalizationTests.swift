@@ -38,6 +38,7 @@ final class LocalizationTests: XCTestCase {
                 ("workingWord", l.workingWord), ("doneWord", l.doneWord),
                 ("refresh", l.refresh), ("quit", l.quit),
                 ("notifyTitle", l.notifyTitle), ("notifyMenu", l.notifyMenu),
+                ("desktopAppMissing", l.desktopAppMissing),
                 ("localeID", l.localeID),
             ]
             for (name, value) in fields {

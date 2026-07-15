@@ -100,13 +100,13 @@ public final class StatusStore {
             let pid = (obj["session_pid"] as? NSNumber)?.int32Value ?? 0
             if pid > 0 {
                 if !StatusStore.isProcessAlive(pid) {
-                    try? fm.removeItem(at: url)
+                    Self.removeWithLock(url)
                     continue
                 }
             } else {
                 // Old format (no pid) → fall back to time-based staleness check.
                 if now.timeIntervalSince(ts) > StatusStore.staleAfter {
-                    try? fm.removeItem(at: url)
+                    Self.removeWithLock(url)
                     continue
                 }
             }
@@ -144,6 +144,15 @@ public final class StatusStore {
     /// Aggregate state shown on the bar icon. Green (idle) when there are no sessions.
     public func aggregate(_ sessions: [SessionStatus]) -> State {
         sessions.map { $0.state }.max { $0.priority < $1.priority } ?? .green
+    }
+
+    /// Removes a dead session's status file together with its hook-side `.lock`
+    /// companion (the hook serializes concurrent writers through `<file>.json.lock`;
+    /// when the session dies without a SessionEnd, only we ever clean that up).
+    private static func removeWithLock(_ url: URL) {
+        let fm = FileManager.default
+        try? fm.removeItem(at: url)
+        try? fm.removeItem(at: URL(fileURLWithPath: url.path + ".lock"))
     }
 
     /// Checks whether the given PID is alive (POSIX `kill(pid, 0)`).

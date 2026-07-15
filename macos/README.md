@@ -153,14 +153,48 @@ app activation.
 | `PreToolUse` (question tools) | AskUserQuestion / ExitPlanMode → waiting on you | 🔴    |
 | `PermissionRequest`         | A tool approval dialog is shown → waiting on you | 🔴    |
 | `PostToolUse`               | Tool finished (e.g. after you approve) → working | 🟡    |
-| `Notification`              | Fallback signal — waiting on you, or long idle   | 🔴    |
-| `Stop`                      | Response finished                                | 🟢    |
+| `PostToolUseFailure`        | Tool failed → Claude keeps working               | 🟡    |
+| `PermissionDenied`          | Auto-denied → Claude keeps working               | 🟡    |
+| `Notification` (filtered)   | Only `permission_prompt`/`elicitation_dialog`/`agent_needs_input`/mid-turn-idle → red; everything else — including an unknown or missing type — repaints nothing | 🔴    |
+| `SubagentStart`             | A background subagent started → working          | 🟡    |
+| `SubagentStop`              | Subagent finished → only clears it from the active set, color untouched | —  |
+| `Stop`, `StopFailure`       | Response finished (or errored) → your turn       | 🟢    |
+| `Stop` (a subagent is still active) | Background work still running → stay working | 🟡 |
+| `Stop` (reply ends with `?`, anchored to the last sentence) | Claude asked in prose → waiting on you | 🔴 |
+| `Stop` (courtesy closer)    | "Anything else?" / "Başka bir şey var mı?" → done | 🟢    |
 | `SessionEnd`                | Session ended                                    | (removed) |
+
+The `Notification` allowlist is inverted on purpose: a future/unknown
+notification type, or a Claude Code version where the field never arrives,
+must never be able to paint a false mid-turn red — the cheap direction is "don't
+write" (a real permission wait already goes red via the separate
+`PermissionRequest` event). The "reply ends with `?`" check is anchored to the
+LAST SENTENCE of the message, not just a trailing character window, so a
+courtesy close embedded in a longer compound question ("...or should I drop the
+table?") still reads as a real question.
+
+A background subagent finishing its own turn used to paint the shared session
+green even while the user's actual request was still running (its own `Stop`),
+then flip back yellow on the next tool call from the main thread — a flicker
+that told the user "done" while work continued. The light now tracks active
+subagent ids (`SubagentStart`/`SubagentStop`) and stays yellow through the real
+`Stop` while any are still active; a detected question always outranks this.
 
 When there are no sessions, **no light is lit** (off). When a chat closes, the app
 notices the session's process (PID) is no longer alive, drops the entry, and deletes
 its stale status file — so the list stays clean even if `SessionEnd` doesn't fire
 (e.g. the window was closed abruptly).
+
+**Red-trust gate.** A red only counts when the user can actually see the question.
+IDE window reloads silently resume old sessions headlessly; the resumed process
+immediately re-fires the pending-question `Notification`, which would paint a
+permanent "ghost red" with no visible chat behind it. `trusted` is granted only
+by an event that actually proves the user is present: they just typed
+(`UserPromptSubmit`), the session has a controlling tty (visible terminal), the
+platform is the always-visible Claude desktop app, or the previous write from the
+same pid was already trusted (inherited). Any other write carries the previous
+trust forward unchanged — a brand-new pid starts untrusted. Untrusted reds are
+written as green.
 
 ## Notifications
 

@@ -349,7 +349,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// Opens the session in the right place (shared by menu clicks and notification
     /// clicks). The decision lives in the testable `SessionRouter`; this just executes.
     private func route(sessionID: String, platform: String, cwd: String, appPath: String, pid: Int32) {
-        switch SessionRouter.action(platform: platform, appPath: appPath, cwd: cwd, sessionID: sessionID) {
+        switch SessionRouter.action(platform: platform, appPath: appPath, cwd: cwd, sessionID: sessionID,
+                                    isValidBundle: Self.isValidBundle) {
         case .desktopDeepLink(let id):
             openChatInDesktop(sessionID: id)
         case .activateApp(let path):
@@ -361,71 +362,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
+    // TWIN FILE (C6): the executor block below (activateApp / focusTerminalSession /
+    // openChatInDesktop / openInApp / openProjectFolder) is intentionally duplicated in
+    // ClaudeWidget/WidgetController.swift — SwiftPM can't share one source file between
+    // two targets. Any change here MUST be mirrored there (and vice versa); the pure
+    // decision logic itself lives in ClaudeStatusCore and is not duplicated.
+
     /// Launches/activates a .app (e.g. a terminal). Returns false if the app path
     /// does not exist so the caller can fall back.
     ///
     /// Activating an app by path alone just raises whichever window macOS last used for
     /// it — wrong when several Claude sessions run in separate windows/tabs of the same
-    /// terminal app. For Terminal.app we instead find the specific tab running `pid`
-    /// (matched by tty) and select it; anything else falls back to plain activation.
+    /// terminal app. For scriptable terminals (Terminal.app, iTerm2) we instead find
+    /// the specific tab running `pid` (matched by tty) and select it; anything else
+    /// falls back to plain activation.
     @discardableResult
     private func activateApp(_ path: String, pid: Int32) -> Bool {
         guard FileManager.default.fileExists(atPath: path) else { return false }
-        if path.hasSuffix("/Terminal.app"), focusTerminalTab(forPid: pid) { return true }
+        if focusTerminalSession(appPath: path, pid: pid) { return true }
         let cfg = NSWorkspace.OpenConfiguration()
         cfg.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: path), configuration: cfg, completionHandler: nil)
         return true
     }
 
-    private func focusTerminalTab(forPid pid: Int32) -> Bool {
-        guard pid > 0, let tty = ttyDevice(forPid: pid) else { return false }
-        let script = """
-        tell application "Terminal"
-            activate
-            repeat with w in windows
-                repeat with t in tabs of w
-                    if tty of t is "\(tty)" then
-                        set frontmost of w to true
-                        set selected of t to true
-                        return true
-                    end if
-                end repeat
-            end repeat
-            return false
-        end tell
-        """
-        guard let appleScript = NSAppleScript(source: script) else { return false }
+    private func focusTerminalSession(appPath: String, pid: Int32) -> Bool {
+        guard pid > 0, let tty = TTYDevice.device(forPid: pid),
+              let source = TerminalFocus.script(appPath: appPath, ttyDevice: tty),
+              let appleScript = NSAppleScript(source: source) else { return false }
         var errorInfo: NSDictionary?
         let result = appleScript.executeAndReturnError(&errorInfo)
         if let errorInfo {
-            NSLog("focusTerminalTab: AppleScript error: \(errorInfo)")
+            NSLog("focusTerminalSession: AppleScript error: \(errorInfo)")
             return false
         }
         return result.booleanValue
     }
 
-    private func ttyDevice(forPid pid: Int32) -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/ps")
-        task.arguments = ["-o", "tty=", "-p", "\(pid)"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-        do {
-            try task.run()
-            task.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let out = String(data: data, encoding: .utf8) else { return nil }
-            return TTYDevice.parse(psOutput: out)
-        } catch {
-            return nil
-        }
-    }
-
     /// Opens the session in the Claude desktop app (claude://resume deep link).
+    /// If nothing on this machine handles claude:// (desktop app not installed),
+    /// tell the user instead of failing silently.
     private func openChatInDesktop(sessionID: String) {
         guard let url = URL(string: "claude://resume?session=\(sessionID)") else { return }
+        guard NSWorkspace.shared.urlForApplication(toOpen: url) != nil else {
+            // C9/C8: this feedback is itself a notification — when the user has turned
+            // notifications off, respect that and just beep instead of posting one anyway.
+            if notificationsEnabled {
+                let content = UNMutableNotificationContent()
+                content.title = l10n.notifyTitle
+                content.body = l10n.desktopAppMissing
+                let req = UNNotificationRequest(identifier: "desktop-missing", content: content, trigger: nil)
+                UNUserNotificationCenter.current().add(req)
+            }
+            NSSound.beep()
+            return
+        }
         NSWorkspace.shared.open(url)
     }
 
@@ -441,19 +432,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                                 configuration: NSWorkspace.OpenConfiguration())
     }
 
-    /// Opens the project folder in the first installed editor (VS Code → Cursor → Terminal).
+    /// Opens the project folder in the first installed editor (VS Code → Cursor,
+    /// checking ~/Applications too); if no editor is found, reveals it in Finder
+    /// (a neutral fallback — never a surprise app). Candidate order (F8) is the SAME
+    /// list `SessionRouter`'s vscode/cursor fallback draws from, so a normal click and
+    /// an Option-click never disagree about which editor wins.
     private func openProjectFolder(_ path: String) {
         guard !path.isEmpty else { return }
         let folder = URL(fileURLWithPath: path)
-        let editors = ["/Applications/Visual Studio Code.app", "/Applications/Cursor.app"]
-        for appPath in editors where FileManager.default.fileExists(atPath: appPath) {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        for appPath in SessionRouter.editorCandidates(home: home)
+        where FileManager.default.fileExists(atPath: appPath) {
             NSWorkspace.shared.open([folder], withApplicationAt: URL(fileURLWithPath: appPath),
                                     configuration: NSWorkspace.OpenConfiguration())
             return
         }
-        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        NSWorkspace.shared.open([folder], withApplicationAt: terminal,
-                                configuration: NSWorkspace.OpenConfiguration())
+        NSWorkspace.shared.open(folder)
+    }
+
+    /// F10 — confirms a `.app`-suffixed path segment from `SessionRouter.mainAppBundle`
+    /// is an actual bundle (has an Info.plist), not just a folder that happens to be
+    /// named "*.app" sitting above the real one.
+    private static func isValidBundle(_ path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path + "/Contents/Info.plist")
     }
 
     @objc private func refreshNow() {

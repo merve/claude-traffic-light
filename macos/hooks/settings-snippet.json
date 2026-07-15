@@ -30,10 +30,46 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.claude/hooks/claude-status-hook.sh yellow" }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$HOME/.claude/hooks/claude-status-hook.sh yellow" }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$HOME/.claude/hooks/claude-status-hook.sh green" }
+        ]
+      }
+    ],
     "Notification": [
       {
         "hooks": [
           { "type": "command", "command": "$HOME/.claude/hooks/claude-status-hook.sh red" }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$HOME/.claude/hooks/claude-status-hook.sh subagent-start" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$HOME/.claude/hooks/claude-status-hook.sh subagent-stop" }
         ]
       }
     ],

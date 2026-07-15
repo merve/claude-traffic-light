@@ -85,12 +85,25 @@ console-window flash on every tool call. Install merges these groups into
 | Event | State |
 |---|---|
 | `UserPromptSubmit`, `PreToolUse`, `PostToolUse` | `yellow` |
-| `PermissionRequest`, `Notification` | `red` |
-| `Stop` | `green` |
+| `PostToolUseFailure`, `PermissionDenied` | `yellow` |
+| `PermissionRequest`, `Notification`* | `red` |
+| `SubagentStart` | `subagent-start` (repaints `yellow`, tracks the agent id) |
+| `SubagentStop` | `subagent-stop` (clears the agent id, color untouched) |
+| `Stop`, `StopFailure` | `green`** |
 | `SessionEnd` | `end` (deletes the file) |
 
 Plus a **red override**: if a `yellow` event carries a `tool_name` of
 `AskUserQuestion` / `ExitPlanMode`, it's promoted to `red` (Claude is waiting).
+
+\* `Notification` is filtered by an inverted allowlist: only
+`permission_prompt`/`elicitation_dialog`/`agent_needs_input`/mid-turn-idle go
+red; every other type — including unknown or missing — repaints nothing, so a
+future notification type can never fake a mid-turn red. Full detail + the
+red-trust gate (F3/F5/F9) and subagent tracking (F11): see
+[`WINDOWS-PORT-SPEC.md`](WINDOWS-PORT-SPEC.md).
+
+\** Unless a background subagent is still active (stays `yellow`) or the
+reply's last sentence ends in a real question (goes `red`).
 
 The merge is idempotent (running install again won't duplicate entries) and
 identifies our groups by the exe reference in the command, so it survives moving

@@ -253,7 +253,8 @@ final class WidgetController: NSObject, NSWindowDelegate {
     // MARK: - Actions
 
     private func route(_ s: SessionStatus) {
-        switch SessionRouter.action(platform: s.platform, appPath: s.appPath, cwd: s.cwd, sessionID: s.sessionID) {
+        switch SessionRouter.action(platform: s.platform, appPath: s.appPath, cwd: s.cwd, sessionID: s.sessionID,
+                                    isValidBundle: Self.isValidBundle) {
         case .desktopDeepLink(let id):
             openChatInDesktop(sessionID: id)
         case .activateApp(let path):
@@ -279,67 +280,48 @@ final class WidgetController: NSObject, NSWindowDelegate {
         }
     }
 
+    // TWIN FILE (C6): the executor block below (activateApp / focusTerminalSession /
+    // openChatInDesktop / openInApp / openProjectFolder) is intentionally duplicated in
+    // ClaudeStatus/AppDelegate.swift — SwiftPM can't share one source file between two
+    // targets. Any change here MUST be mirrored there (and vice versa); the pure decision
+    // logic itself lives in ClaudeStatusCore and is not duplicated.
+
     /// Activating an app by path alone just raises whichever window macOS last used for it —
     /// wrong when several Claude sessions run in separate windows/tabs of the same terminal
-    /// app. For Terminal.app we instead find the specific tab running `pid` (matched by tty)
-    /// and select it; anything else (or if that lookup fails) falls back to plain activation.
+    /// app. For scriptable terminals (Terminal.app, iTerm2) we instead find the specific tab
+    /// running `pid` (matched by tty) and select it; anything else (or if that lookup fails)
+    /// falls back to plain activation.
     @discardableResult
     private func activateApp(_ path: String, pid: Int32) -> Bool {
         guard FileManager.default.fileExists(atPath: path) else { return false }
-        if path.hasSuffix("/Terminal.app"), focusTerminalTab(forPid: pid) { return true }
+        if focusTerminalSession(appPath: path, pid: pid) { return true }
         let cfg = NSWorkspace.OpenConfiguration()
         cfg.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: path), configuration: cfg, completionHandler: nil)
         return true
     }
 
-    private func focusTerminalTab(forPid pid: Int32) -> Bool {
-        guard pid > 0, let tty = ttyDevice(forPid: pid) else { return false }
-        let script = """
-        tell application "Terminal"
-            activate
-            repeat with w in windows
-                repeat with t in tabs of w
-                    if tty of t is "\(tty)" then
-                        set frontmost of w to true
-                        set selected of t to true
-                        return true
-                    end if
-                end repeat
-            end repeat
-            return false
-        end tell
-        """
-        guard let appleScript = NSAppleScript(source: script) else { return false }
+    private func focusTerminalSession(appPath: String, pid: Int32) -> Bool {
+        guard pid > 0, let tty = TTYDevice.device(forPid: pid),
+              let source = TerminalFocus.script(appPath: appPath, ttyDevice: tty),
+              let appleScript = NSAppleScript(source: source) else { return false }
         var errorInfo: NSDictionary?
         let result = appleScript.executeAndReturnError(&errorInfo)
         if let errorInfo {
-            NSLog("focusTerminalTab: AppleScript error: \(errorInfo)")
+            NSLog("focusTerminalSession: AppleScript error: \(errorInfo)")
             return false
         }
         return result.booleanValue
     }
 
-    private func ttyDevice(forPid pid: Int32) -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/ps")
-        task.arguments = ["-o", "tty=", "-p", "\(pid)"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-        do {
-            try task.run()
-            task.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let out = String(data: data, encoding: .utf8) else { return nil }
-            return TTYDevice.parse(psOutput: out)
-        } catch {
-            return nil
-        }
-    }
-
     private func openChatInDesktop(sessionID: String) {
         guard let url = URL(string: "claude://resume?session=\(sessionID)") else { return }
+        // No handler for claude:// (desktop app not installed) → audible feedback
+        // instead of a silent no-op (the widget has no notification pipeline).
+        guard NSWorkspace.shared.urlForApplication(toOpen: url) != nil else {
+            NSSound.beep()
+            return
+        }
         NSWorkspace.shared.open(url)
     }
 
@@ -355,14 +337,21 @@ final class WidgetController: NSObject, NSWindowDelegate {
     private func openProjectFolder(_ path: String) {
         guard !path.isEmpty else { return }
         let folder = URL(fileURLWithPath: path)
-        let editors = ["/Applications/Visual Studio Code.app", "/Applications/Cursor.app"]
-        for appPath in editors where FileManager.default.fileExists(atPath: appPath) {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        for appPath in SessionRouter.editorCandidates(home: home)
+        where FileManager.default.fileExists(atPath: appPath) {
             NSWorkspace.shared.open([folder], withApplicationAt: URL(fileURLWithPath: appPath),
                                     configuration: NSWorkspace.OpenConfiguration())
             return
         }
-        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        NSWorkspace.shared.open([folder], withApplicationAt: terminal, configuration: NSWorkspace.OpenConfiguration())
+        NSWorkspace.shared.open(folder)
+    }
+
+    /// F10 — confirms a `.app`-suffixed path segment from `SessionRouter.mainAppBundle`
+    /// is an actual bundle (has an Info.plist), not just a folder that happens to be
+    /// named "*.app" sitting above the real one.
+    private static func isValidBundle(_ path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path + "/Contents/Info.plist")
     }
 
     // MARK: - Context menu

@@ -30,6 +30,8 @@
     <Compile Include="..\ClaudeTrafficLight\Platform\ProcessInfo.cs" Link="Platform\ProcessInfo.cs" />
     <Compile Include="..\ClaudeTrafficLight\Platform\ProcessTree.cs" Link="Platform\ProcessTree.cs" />
     <Compile Include="..\ClaudeTrafficLight\Platform\NativeMethods.cs" Link="Platform\NativeMethods.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Hook\HookRunner.cs" Link="Hook\HookRunner.cs" />
+    <Compile Include="..\ClaudeTrafficLight\Bootstrap.cs" Link="Bootstrap.cs" />
   </ItemGroup>
 
 </Project>

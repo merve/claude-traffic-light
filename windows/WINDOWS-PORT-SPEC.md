@@ -51,15 +51,41 @@ Uygulama ile hook arasındaki tek arayüz budur. Windows'ta da **aynen** korunma
 {
   "state": "yellow",              // "red" | "yellow" | "green"  (zorunlu)
   "project": "my-app",            // cwd'nin son klasör adı
-  "cwd": "C:\\Users\\me\\my-app", // proje kök dizini
+  "cwd": "C:\\Users\\me\\my-app", // oturumun BAŞLADIĞI dizin — ilk boş-olmayan değerde
+                                  // sabitlenir; tur ortası cd (payload cwd'si canlı çalışma
+                                  // dizinini izler) satırı yeniden adlandıramaz/tık hedefini kaydıramaz
   "ts": 1699999999,               // unix saniye (int)
   "session_pid": 12345,           // oturumun claude sürecinin PID'i (bilinmiyorsa 0)
   "platform": "vscode",           // "desktop"|"vscode"|"cursor"|"terminal"|"unknown"
-  "app_path": ""                  // (Mac) oturumu barındıran .app yolu; Windows'ta pid daha kullanışlı
+  "app_path": "",                 // (Mac) oturumu barındıran .app yolu; Windows'ta pid daha kullanışlı
+  "trusted": true,                // red-trust gate sonucu (yukarı bkz.) — eski dosyalarda yoksa false say
+  "subagents": {}                 // F11: aktif subagent id -> başlangıç ts (unix sn). Boşsa {}
 }
 ```
 
 `state` geçersiz/eksikse dosya yok sayılır.
+
+---
+
+### Düzeltme kimlikleri (F1–F11)
+
+Kod yorumlarında ve testlerde geçen `F…` etiketleri, 2026-07 renk-doğruluğu
+düzeltme turunun maddeleridir (orijinal spec dosyası uygulandıktan sonra
+silindi; davranışın kendisi bu dosyada belgelidir):
+
+| Etiket | Düzeltme |
+|---|---|
+| F1 | Nezaket kapanışı tespiti son cümleye çıpalandı (substring tersine dönmesi giderildi) |
+| F2 | `Notification` allowlist'i ters çevrildi: bilinmeyen/eksik tip hiçbir şey yazmaz |
+| F3 | `platform == "desktop"` taban güven kazandı (tty şartı aranmaz) |
+| F4 | Windows olay kaydı macOS snippet'iyle senkronlandı (test: `BootstrapEventsTests`) |
+| F5 | Güven yalnız kanıtlayan olayla kazanılır (`UserPromptSubmit`/tty/desktop/miras); default untrusted |
+| F6 | Kapanış tırnak kümesine akıllı tırnaklar/CJK kapanışları eklendi |
+| F7 | Transcript taraması `\n` ile bölünür (U+2028/U+2029 kayıt parçalamaz — macOS) |
+| F8 | Editör aday listesi tek kaynağa alındı (`SessionRouter.editorCandidates`) |
+| F9 | Windows görünürlük predicate'i tanımlandı (§3'teki red-trust bölümü) |
+| F10 | `mainAppBundle` geçersiz `.app` segmentini atlar (enjekte edilebilir doğrulayıcı) |
+| F11 | Subagent takibi: arka plan agent'ları sürerken sarı↔yeşil salınımı giderildi |
 
 ---
 
@@ -79,9 +105,45 @@ Mac'teki `hooks/settings-snippet.json` birebir (komut yolu Windows'a göre deği
 | `PreToolUse`        | `*`     | `yellow`      | araç çalışacak → çalışıyor       |
 | `PermissionRequest` | —       | `red`         | izin istiyor → seni bekliyor     |
 | `PostToolUse`       | `*`     | `yellow`      | araç bitti → çalışıyor           |
-| `Notification`      | —       | `red`         | bildirim → seni bekliyor         |
-| `Stop`              | —       | `green`       | yanıt bitti → sıra sende         |
+| `PostToolUseFailure`| `*`     | `yellow`      | araç hata verdi → çalışmaya devam |
+| `PermissionDenied`  | —       | `yellow`      | otomatik reddedildi → devam      |
+| `Notification`      | —       | `red`*        | bildirim → tipe göre filtrelenir |
+| `SubagentStart`     | —       | `subagent-start`*** | subagent başladı → sarı, id set'e eklenir |
+| `SubagentStop`      | —       | `subagent-stop`*** | subagent bitti → renk DEĞİŞMEZ, id set'ten düşer |
+| `Stop`              | —       | `green`**     | yanıt bitti → sıra sende         |
+| `StopFailure`       | —       | `green`       | yanıt hatayla bitti → sıra sende |
 | `SessionEnd`        | —       | `end`         | oturum kapandı → dosyayı sil     |
+
+\* `Notification` hook içinde `notification_type`'a göre filtrelenir (F2 —
+allowlist BİLEREK ters çevrilmiştir): yalnızca `permission_prompt`,
+`elicitation_dialog`, `agent_needs_input` kırmızı yazar; `idle_prompt` prev
+green ise yok sayılır, aksi halde kırmızı kalır; `elicitation_complete`/
+`elicitation_response` sarıya döner; **bilinmeyen VEYA eksik/boş tip dahil geri
+kalan HER ŞEY hiçbir şey yazmadan çıkar** — gelecekte eklenecek bir bildirim
+tipi ya da alanın hiç gelmediği eski bir Claude Code sürümü artık tur-ortası
+sahte kırmıza yol açamaz (eski davranışta `auth_success`/`agent_completed` özel
+olarak listeleniyordu; şimdi onlar da bu "bilinmeyen → yazma" dalına düşüyor,
+sonuç aynı).
+
+\** Düz metin sorular: `Stop` anında hook, transcript'teki son asistan mesajına
+bakar; mesaj soruyla bitiyorsa (sondaki `?`) — yani Claude şıksız/serbest metinle
+soru sorduysa — `green` yerine `red` yazılır (bu red de yukarıdaki red-trust
+kapısından geçer). Transcript okunamazsa `green` kalır. İstisna: nezaket
+kapanışları bitiş ilanıdır, tıkanma değildir → `green` kalır — ama bu kontrol
+son cümleye ÇIPALANIR (F1): nezaket kalıbı son cümlenin BAŞINDA olmalı VE
+cümle kalıp uzunluğu + 40 karakteri aşmamalı, yoksa (ör. "Soll ich sonst noch
+die Prod-Config ändern?" — "sonst noch" kalıbı cümlenin ortasında, gerçek
+bileşik bir soru) `red` kalır. Kapanış tırnak/parantez temizliği (F6) akıllı
+tırnakları (`” ‘ 」 』 ）`) da kapsar. Liste bilerek dardır: emin olunamayan her
+soru `red` kalır (yanılmanın ucuz yönü).
+
+\*** F11 — subagent takibi: `subagent-start` her zaman sarı yazar (önceki renk
+ne olursa olsun) ve id'yi `subagents` set'ine ekler; `subagent-stop` id'yi
+setten düşürür ama rengi/diğer alanları HİÇ değiştirmez. Gerçek `Stop` (green
+yolu) sırasında set boş değilse — ve soru tespit edilmediyse — `green` yerine
+`yellow` yazılır (arka planda hâlâ subagent çalışıyor, kullanıcı için iş tek
+parça). Set'teki girdiler 30 dakikadan (StatusStore.staleAfter) eski ise
+budanır, kaçırılan bir `SubagentStop` kalıcı sarıya yol açmasın diye.
 
 Grup JSON şekli (her olay için):
 ```json
@@ -89,16 +151,50 @@ Grup JSON şekli (her olay için):
 ```
 `PreToolUse`/`PostToolUse` gruplarında ayrıca `"matcher": "*"` bulunur.
 
+**Kırmızı-güven kapısı (red-trust gate — F3/F5/F9).**
+IDE penceresi yeniden yüklendiğinde eklenti eski oturumları arka planda sessizce
+resume eder; resume edilen süreç bekleyen sorunun `Notification`'ını anında
+yeniden ateşler ve kullanıcının hiçbir yerde göremeyeceği kalıcı bir "hayalet
+kırmızı" oluşur. `trusted` bayrağı YALNIZCA kullanıcının varlığını **kanıtlayan**
+bir olayla kazanılır:
+
+- `hook_event_name == "UserPromptSubmit"` (kullanıcı az önce yazdı — doğrudan kanıt), ya da
+- oturum görünür bir konsola bağlıysa (**görünürlük predicate'i:** "oturum,
+  kullanıcının görebildiği bir konsola/pencereye bağlı mı?" — Windows'ta gerçek
+  konsol-bağlılığı native olarak problanmıyor çünkü tty kavramı yok; en yakın
+  sinyal `platform == "terminal"`, ama bu VS Code'un **entegre terminalindeki**
+  bir oturumu kapsamaz (o oturum `platform == "vscode"` sınıflanır — §12.2/F9).
+  Bu boşluk kasıtlı olarak native bir prob yerine UserPromptSubmit güveniyle
+  kapatılır: entegre terminaldeki canlı bir panel oturumu ilk kullanıcı
+  mesajında zaten güven kazanır), ya da
+- `platform == "desktop"` (Desktop uygulaması her zaman açık, görünür bir
+  penceredir — vscode/cursor'un aksine burada kanıtlanmış bir hayalet-resume
+  senaryosu yok), ya da
+- aynı süreç (pid) altındaki önceki yazım zaten güvenliydi (miras — durum
+  dosyasındaki `trusted` alanıyla izlenir; eski-format dosyalarda bu alan
+  yoksa varsayılan **false**'tur, true değil).
+
+Bunların dışındaki her yazım (ör. sıradan bir `PreToolUse` sarı olayı) önceki
+`trusted` değerini olduğu gibi taşır — yeni bir güven kazandırmaz. Güvenilmeyen
+bir kırmızı `green` olarak yazılır (macOS eşleniği: `macos/hooks/claude-status-hook.sh`).
+
 ### 3.2 Hook mantığı (state parametresine göre)
 
 1. `STATUS_DIR = %USERPROFILE%\.claude\status`, yoksa oluştur.
 2. stdin'deki JSON'u oku ve parse et (parse edilemezse boş obje kabul et).
 3. `session_id` al, sanitize et, hedef dosya yolunu kur.
-4. **Kırmızı override kuralı (önemli):** `state == "yellow"` VE `tool_name`
-   (küçük harfe çevrilmiş) `askuserquestion` veya `exitplanmode` içeriyorsa →
-   `state = "red"` yap. (Bu araçlar kullanıcıya soru sorup beklediği için.)
+4. **Kırmızı override kuralı (önemli):** `state == "yellow"` VE
+   `hook_event_name == "PreToolUse"` VE `tool_name` (küçük harfe çevrilmiş)
+   `askuserquestion` veya `exitplanmode` içeriyorsa → `state = "red"` yap.
+   (Bu araçlar kullanıcıya soru sorup beklediği için.) YALNIZ PreToolUse:
+   `PostToolUse` aynı `tool_name`'i taşır ama kullanıcı CEVAPLADIĞI anda
+   ateşlenir — orada da kırmızıya yükseltmek, ışığı sorudan sonra bir sonraki
+   alakasız olaya kadar kırmızıda bırakıyordu (cevap → sarı olmalı).
 5. `state == "end"` ise: dosyayı sil ve çık.
-6. Değilse: `cwd`'den `project = son klasör adı` türet, `ts = şu anki unix saniye`,
+6. Değilse: `cwd`'yi belirle — önceki dosyada boş-olmayan `cwd` varsa ONU kullan
+   (oturum kimliği başlangıç dizinine sabitlenir; payload'daki cwd oturumun canlı
+   çalışma dizinini izlediği için tur ortası `cd` satır adını/tık hedefini
+   değiştirmemeli) — `project = son klasör adı` türet, `ts = şu anki unix saniye`,
    `session_pid`, `platform`, `app_path` doldur ve JSON'u **atomik** yaz.
 
 ### 3.3 Platform tespiti (process ağacından)
