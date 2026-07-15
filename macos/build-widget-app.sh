@@ -87,8 +87,10 @@ PLIST
 
 # Ad-hoc signature, identifier matching CFBundleIdentifier (same reasoning as build-app.sh).
 echo "==> Ad-hoc signing (identity = $BUNDLE_ID)…"
-codesign --force --deep --sign - --identifier "$BUNDLE_ID" "$APP_DIR"
-codesign -dv "$APP_DIR" 2>&1 | grep -E "Identifier|Signature" | sed 's/^/    /'
+# Signing: ad-hoc by default; set CODESIGN_ID for a stable identity so TCC grants
+# survive rebuilds (see build-app.sh).
+codesign --force --deep --sign "${CODESIGN_ID:--}" --identifier "$BUNDLE_ID" "$APP_DIR"
+codesign -dv "$APP_DIR" 2>&1 | grep -E "Identifier|Signature|Authority" | sed 's/^/    /'
 
 touch "$APP_DIR"
 

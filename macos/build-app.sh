@@ -90,8 +90,12 @@ PLIST
 # ("ClaudeStatus") as its identifier, which does not match CFBundleIdentifier; that
 # mismatch silently breaks UNUserNotificationCenter registration (i.e. notifications).
 echo "==> Ad-hoc signing (identity = $BUNDLE_ID, for notifications)…"
-codesign --force --deep --sign - --identifier "$BUNDLE_ID" "$APP_DIR"
-codesign -dv "$APP_DIR" 2>&1 | grep -E "Identifier|Signature" | sed 's/^/    /'
+# Signing: ad-hoc by default. Ad-hoc identities are NOT stable across rebuilds, so
+# macOS TCC (Desktop/Documents access, Automation, …) forgets granted permissions on
+# every update and re-prompts. Set CODESIGN_ID to a real identity from
+# `security find-identity -v -p codesigning` to make grants stick between builds.
+codesign --force --deep --sign "${CODESIGN_ID:--}" --identifier "$BUNDLE_ID" "$APP_DIR"
+codesign -dv "$APP_DIR" 2>&1 | grep -E "Identifier|Signature|Authority" | sed 's/^/    /'
 
 # Refresh the icon cache (so Finder/Dock don't show a stale icon).
 touch "$APP_DIR"
