@@ -325,7 +325,15 @@ final class WidgetController: NSObject, NSWindowDelegate {
         NSWorkspace.shared.open(url)
     }
 
+    /// Prefers the editor's URL scheme (vscode://file/…) over a file-URL open: the
+    /// file route makes TCC ask "access files in your Desktop folder" — repeatedly,
+    /// since an ad-hoc signed app loses its grants on every update.
     private func openInApp(_ appPath: String, folder: String) {
+        if let link = SessionRouter.editorDeepLink(appPath: appPath, folder: folder),
+           NSWorkspace.shared.urlForApplication(toOpen: link) != nil {
+            NSWorkspace.shared.open(link)
+            return
+        }
         guard FileManager.default.fileExists(atPath: appPath), !folder.isEmpty else {
             openProjectFolder(folder)
             return

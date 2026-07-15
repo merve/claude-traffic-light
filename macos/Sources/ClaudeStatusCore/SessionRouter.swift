@@ -50,6 +50,25 @@ public enum SessionRouter {
         }
     }
 
+    /// URL-scheme deep link that opens `folder` in the editor at `appPath` WITHOUT the
+    /// caller touching the filesystem. Opening the folder as a file URL makes macOS TCC
+    /// prompt "would like to access files in your Desktop folder" (and with an ad-hoc
+    /// signed app, on every update again) — the URL scheme route never triggers it,
+    /// because the editor itself does the file access. nil for editors without a known
+    /// scheme; callers fall back to the file-based open.
+    public static func editorDeepLink(appPath: String, folder: String) -> URL? {
+        guard !folder.isEmpty, folder.hasPrefix("/") else { return nil }
+        let scheme: String
+        switch (appPath as NSString).lastPathComponent {
+        case "Visual Studio Code.app":            scheme = "vscode"
+        case "Visual Studio Code - Insiders.app": scheme = "vscode-insiders"
+        case "Cursor.app":                        scheme = "cursor"
+        default: return nil
+        }
+        guard let encoded = folder.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
+        return URL(string: "\(scheme)://file\(encoded)")
+    }
+
     /// F8 — single source of truth for "generic folder opener" fallback order (VS Code
     /// before Cursor; /Applications before ~/Applications for each). Used by the vscode/
     /// cursor fallback above AND by both `openProjectFolder` copies (AppDelegate,

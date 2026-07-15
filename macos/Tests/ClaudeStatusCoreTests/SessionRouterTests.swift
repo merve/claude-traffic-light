@@ -119,6 +119,27 @@ final class SessionRouterTests: XCTestCase {
         XCTAssertEqual(SessionRouter.mainAppBundle(from: "/Applications/iTerm.app"), "/Applications/iTerm.app")
     }
 
+    // MARK: - Editor deep links (TCC-prompt avoidance)
+
+    func testEditorDeepLinkForVSCodeEncodesThePath() {
+        XCTAssertEqual(SessionRouter.editorDeepLink(appPath: "/Applications/Visual Studio Code.app",
+                                                    folder: "/Users/me/My Projects/app")?.absoluteString,
+                       "vscode://file/Users/me/My%20Projects/app")
+    }
+
+    func testEditorDeepLinkKnowsInsidersAndCursorSchemes() {
+        XCTAssertEqual(SessionRouter.editorDeepLink(appPath: "/x/Visual Studio Code - Insiders.app",
+                                                    folder: "/w")?.scheme, "vscode-insiders")
+        XCTAssertEqual(SessionRouter.editorDeepLink(appPath: "/Applications/Cursor.app",
+                                                    folder: "/w")?.scheme, "cursor")
+    }
+
+    func testEditorDeepLinkRejectsUnknownEditorsAndBadFolders() {
+        XCTAssertNil(SessionRouter.editorDeepLink(appPath: "/Applications/Xcode.app", folder: "/w"))
+        XCTAssertNil(SessionRouter.editorDeepLink(appPath: "/Applications/Cursor.app", folder: ""))
+        XCTAssertNil(SessionRouter.editorDeepLink(appPath: "/Applications/Cursor.app", folder: "relative/path"))
+    }
+
     func testActionThreadsIsValidBundleIntoTerminalRouting() {
         let result = SessionRouter.action(platform: "terminal", appPath: "/x/tools.app/iTerm.app",
                                           cwd: "/w", sessionID: "s1") { $0 != "/x/tools.app" }
