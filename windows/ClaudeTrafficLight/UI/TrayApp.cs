@@ -72,6 +72,7 @@ public sealed class TrayApp : ApplicationContext
         f.RouteRequested += Route;
         f.EndRequested += EndSession;
         f.RefreshRequested += () => { Poll(); ShowFlyout(); };   // rebuild in place
+        f.UpdateCheckRequested += CheckForUpdates;
         f.QuitRequested += Shutdown;
         f.FormClosed += (_, _) => { if (_flyout == f) { _flyout = null; _flyoutClosedTick = Environment.TickCount; } };
         _flyout = f;
@@ -188,6 +189,48 @@ public sealed class TrayApp : ApplicationContext
         var t = new System.Windows.Forms.Timer { Interval = 400 };
         t.Tick += (_, _) => { t.Stop(); t.Dispose(); Poll(); };
         t.Start();
+    }
+
+    /// <summary>
+    /// Manual, user-initiated only: this is the app's ONLY network call, fired
+    /// exclusively from the "Check for Updates…" menu row — the app never phones
+    /// home on its own. Newer release → open its page in the browser; otherwise
+    /// a short balloon tip.
+    /// </summary>
+    private async void CheckForUpdates()
+    {
+        CloseFlyout();
+        string current = typeof(TrayApp).Assembly.GetName().Version?.ToString(3) ?? "";
+        string? body = null;
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            // GitHub's API rejects requests without a User-Agent.
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("claude-traffic-light");
+            body = await http.GetStringAsync(UpdateCheck.LatestReleaseApi);
+        }
+        catch { /* offline / rate-limited → fall through to the failure tip */ }
+
+        var latest = body is null ? null : UpdateCheck.ParseLatestRelease(body);
+        if (latest is null)
+        {
+            _tray.ShowBalloonTip(4000, "Claude Traffic Light", _l.UpdateCheckFailed, ToolTipIcon.Warning);
+            return;
+        }
+        if (UpdateCheck.IsNewer(latest.Value.Tag, current))
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(latest.Value.Url) { UseShellExecute = true });
+            }
+            catch { /* no browser handler — nothing sane to do */ }
+        }
+        else
+        {
+            string shown = string.IsNullOrEmpty(current) ? "dev" : current;
+            _tray.ShowBalloonTip(4000, "Claude Traffic Light", $"{_l.UpToDate} ({shown})", ToolTipIcon.Info);
+        }
     }
 
     private void Shutdown()

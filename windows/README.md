@@ -12,7 +12,9 @@ Multiple sessions collapse to the highest-priority color (red > yellow > green).
 Click the icon for a per-session menu; click a session to jump to it (VS Code /
 Cursor / terminal / Claude desktop). A balloon fires when a session turns red.
 
-**No network, no tokens — reads local files only, fully offline.** It shares the
+**No network, no tokens — reads local files only, fully offline** (single
+exception: the manual **Check for Updates…** menu row calls the GitHub Releases
+API only when clicked). It shares the
 exact same `~/.claude/status` contract as the macOS app, so both can run side by side.
 
 This is the Windows port of the macOS menu-bar app. Behavior contract:
