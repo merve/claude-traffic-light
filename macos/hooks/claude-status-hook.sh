@@ -90,8 +90,15 @@ if state == "end":
 # and the temp file is per-writer — a shared ".tmp" name let one process install
 # another's HALF-WRITTEN json (torn write), which the app then couldn't parse (row
 # vanished) and the next hook read as "no previous file" (cwd pin reset).
+# Bounded wait (~2s), then proceed unlocked: a hook must never stall Claude Code's
+# events behind a wedged lock holder — worst case is the pre-lock behavior.
 _lock = open(path + ".lock", "w")
-fcntl.flock(_lock, fcntl.LOCK_EX)
+for _ in range(200):
+    try:
+        fcntl.flock(_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        break
+    except OSError:
+        time.sleep(0.01)
 
 def write_atomic(obj):
     tmp = f"{path}.tmp.{os.getpid()}"

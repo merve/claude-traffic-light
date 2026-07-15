@@ -297,8 +297,7 @@ public static class HookRunner
 
         string tmp = $"{path}.tmp.{Environment.ProcessId}";
         File.WriteAllText(tmp, root.ToJsonString(), new UTF8Encoding(false));
-        if (File.Exists(path)) File.Replace(tmp, path, null);
-        else File.Move(tmp, path);
+        ReplaceWithRetry(tmp, path);
     }
 
     /// <summary>
@@ -419,11 +418,30 @@ public static class HookRunner
         string tmp = $"{path}.tmp.{Environment.ProcessId}";
         var json = JsonSerializer.Serialize(data);
         File.WriteAllText(tmp, json, new UTF8Encoding(false));
-        // Atomic replace so the reader never sees a half-written file.
-        if (File.Exists(path))
-            File.Replace(tmp, path, null);
-        else
-            File.Move(tmp, path);
+        ReplaceWithRetry(tmp, path);
+    }
+
+    /// <summary>
+    /// Atomic replace so the reader never sees a half-written file. Unlike POSIX rename,
+    /// Windows ReplaceFile fails with a sharing violation if the tray/widget poll happens
+    /// to be reading the destination at that instant — without the retry the write (a
+    /// whole state transition) would be silently dropped by the hook's catch-all.
+    /// </summary>
+    private static void ReplaceWithRetry(string tmp, string path)
+    {
+        for (int i = 0; ; i++)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Replace(tmp, path, null);
+                else File.Move(tmp, path);
+                return;
+            }
+            catch (IOException) when (i < 20)
+            {
+                Thread.Sleep(10);
+            }
+        }
     }
 
     private static string GetString(JsonElement obj, string key)
